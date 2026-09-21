@@ -1,0 +1,67 @@
+C4Component
+title Diagrama de Componentes (C4 Nivel 3) - API Modulo CRM
+
+Container_Ext(cliente, "Cliente API", "Aplicacion Web / Mobile", "Cliente que consume la API REST")
+
+Container_Boundary(api, "API Backend - Modulo CRM") {
+
+    Component(authMiddleware, "Auth Middleware", "JWT / BearerAuth", "Valida el token JWT y verifica el rol del usuario en cada solicitud protegida")
+
+    Component(errorHandler, "Error Handler Middleware", "Middleware", "Captura excepciones y estandariza las respuestas de error 400, 401, 404 y 500")
+
+    Component(contactoController, "Contacto Controller", "Controller", "Expone endpoints para crear, consultar, modificar, buscar, activar y desactivar contactos")
+
+    Component(authController, "Auth Controller", "Controller", "Expone el endpoint de login y gestiona la autenticacion")
+
+    Component(usuarioController, "Usuario Controller", "Controller", "Expone endpoints para la gestion de usuarios")
+
+    Component(contactoService, "Contacto Service", "Service", "Implementa reglas de negocio y validaciones para contactos, clientes, proveedores y empleados")
+
+    Component(authService, "Auth Service", "Service", "Valida credenciales y genera y verifica tokens JWT")
+
+    Component(usuarioService, "Usuario Service", "Service", "Implementa las reglas de negocio de usuarios y roles")
+
+    Component(contactoRepository, "Contacto Repository", "Repository", "Encapsula el acceso a datos de Contacto, Cliente, Proveedor y Empleado")
+
+    Component(usuarioRepository, "Usuario Repository", "Repository", "Encapsula el acceso a datos de Usuario")
+
+    Component(contactoDTO, "Contacto DTO", "DTO", "Define la estructura de entrada y salida de datos de contactos y oculta campos internos")
+
+    Component(usuarioDTO, "Usuario DTO", "DTO", "Define la estructura de entrada y salida de usuarios y oculta password_hash")
+
+    Component(cacheClient, "Cache Client", "Cache-Aside", "Gestiona la lectura y escritura en Redis antes de consultar la base de datos")
+}
+
+ContainerDb_Ext(db, "Base de Datos", "MySQL", "Almacena Usuario, Contacto, Cliente, Proveedor y Empleado")
+
+ContainerDb_Ext(redis, "Redis", "Cache en memoria", "Almacena resultados de consultas frecuentes con TTL")
+
+Rel(cliente, authMiddleware, "Realiza solicitudes", "HTTPS / JSON")
+
+Rel(authMiddleware, errorHandler, "Pasa la solicitud")
+
+Rel(errorHandler, contactoController, "Enruta")
+Rel(errorHandler, authController, "Enruta")
+Rel(errorHandler, usuarioController, "Enruta")
+
+Rel(contactoController, contactoService, "Usa")
+Rel(authController, authService, "Usa")
+Rel(usuarioController, usuarioService, "Usa")
+
+Rel(contactoService, contactoRepository, "Usa")
+Rel(contactoService, contactoDTO, "Mapea datos con")
+
+Rel(authService, usuarioRepository, "Valida credenciales")
+
+Rel(usuarioService, usuarioRepository, "Usa")
+Rel(usuarioService, usuarioDTO, "Mapea datos con")
+
+Rel(contactoRepository, cacheClient, "Intenta leer/escribir", "Cache-Aside")
+
+Rel(usuarioRepository, cacheClient, "Intenta leer/escribir", "Cache-Aside")
+
+Rel(contactoRepository, db, "Lee/escribe", "SQL / ORM")
+
+Rel(usuarioRepository, db, "Lee/escribe", "SQL / ORM")
+
+Rel(cacheClient, redis, "GET / SET", "TTL")
