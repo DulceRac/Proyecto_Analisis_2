@@ -1,0 +1,24 @@
+sequenceDiagram
+    actor C as Cliente externo
+    participant API as API Laravel
+    participant R as Redis
+    participant DB as MySQL
+
+    C->>API: GET /contactos/{id}
+    API->>R: GET crm:contacto:{id}
+    alt Cache hit
+        R-->>API: JSON almacenado
+        API-->>C: 200 OK + JSON
+    else Cache miss
+        R-->>API: null
+        API->>DB: SELECT contacto + subtipo
+        DB-->>API: Datos del contacto
+        API->>R: SETEX crm:contacto:{id} 300
+        API-->>C: 200 OK + JSON
+    end
+    C->>API: PUT /contactos/{id}
+    API->>DB: UPDATE contacto
+    DB-->>API: OK
+    API->>R: DEL crm:contacto:{id}
+    API->>R: Invalidar listas y resúmenes relacionados
+    API-->>C: 200 OK
