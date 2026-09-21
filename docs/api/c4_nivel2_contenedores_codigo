@@ -1,0 +1,31 @@
+C4Container
+title Diagrama de Contenedores (C4 Nivel 2) - Sistema Modulo CRM
+
+Person(usuario, "Usuario Estandar", "Empleado que gestiona contactos")
+
+Person(admin, "Administrador", "Gestiona usuarios y configuracion")
+
+System_Boundary(crm, "Sistema Modulo CRM") {
+
+    Container(web, "Aplicacion Web", "HTML, CSS, JavaScript", "Interfaz que utilizan los usuarios para gestionar contactos")
+
+    Container(api, "API Backend", "Monolito Modular - MVC + Service + Repository + DTO + Middleware", "Expone la API REST, valida autenticacion JWT y aplica reglas de negocio")
+
+    ContainerDb(db, "Base de Datos", "MySQL", "Almacena usuarios, contactos, clientes, proveedores y empleados")
+
+    ContainerDb(cache, "Cache", "Redis", "Almacena resultados de consultas frecuentes mediante el patron Cache-Aside con TTL")
+}
+
+System_Ext(correo, "Servicio de Correo", "Servicio externo para el envio de notificaciones")
+
+Rel(usuario, web, "Usa", "HTTPS")
+
+Rel(admin, web, "Usa", "HTTPS")
+
+Rel(web, api, "Realiza solicitudes", "HTTPS/JSON REST")
+
+Rel(api, cache, "Lee y escribe datos en cache", "TCP / Cache-Aside")
+
+Rel(api, db, "Lee y escribe datos", "SQL / ORM")
+
+Rel(api, correo, "Envia notificaciones", "SMTP/API")
