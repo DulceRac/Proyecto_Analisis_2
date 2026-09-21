@@ -1,0 +1,20 @@
+Codigo Diagrama C4 
+
+Nivel 1
+
+C4Context
+title Diagrama de Contexto (C4 Nivel 1) - Sistema Modulo CRM
+
+Person(usuario, "Usuario Estandar", "Empleado que gestiona contactos, clientes y proveedores")
+
+Person(admin, "Administrador", "Usuario con permisos para gestionar usuarios y configuracion del sistema")
+
+System(crm, "Sistema Modulo CRM", "Permite registrar, consultar, modificar, buscar, activar y desactivar contactos generales, clientes, proveedores y empleados mediante una API REST")
+
+System_Ext(correo, "Servicio de Correo", "Envia notificaciones como confirmaciones de registro y alertas")
+
+Rel(usuario, crm, "Consulta, registra y actualiza contactos", "HTTPS")
+
+Rel(admin, crm, "Administra usuarios y contactos", "HTTPS")
+
+Rel(crm, correo, "Envia notificaciones", "SMTP/API")
