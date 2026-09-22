@@ -1,0 +1,19 @@
+sequenceDiagram
+    actor Cliente
+    participant API as API Laravel
+    participant Redis
+    participant BD as Base de Datos MySQL
+
+    Cliente->>API: PUT /contactos/{id}
+    API->>BD: UPDATE contacto
+    BD-->>API: Actualización correcta
+
+    API->>Redis: DEL crm:contacto:{id}
+    API->>Redis: Invalidar listas relacionadas
+    API->>Redis: Invalidar estadísticas del dashboard
+
+    Redis-->>API: Caché invalidada
+    API-->>Cliente: 200 OK + contacto actualizado
+
+    Note over API,Redis: La próxima consulta generará un Cache Miss
+    Note over API,BD: Los datos actualizados se obtendrán nuevamente desde MySQL
