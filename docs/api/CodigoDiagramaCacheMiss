@@ -1,0 +1,19 @@
+sequenceDiagram
+    actor Cliente
+    participant API as API Laravel
+    participant Redis
+    participant BD as Base de Datos MySQL
+
+    Cliente->>API: GET /contactos/{id}
+    API->>Redis: GET crm:contacto:{id}
+
+    Redis-->>API: Dato no encontrado (Cache Miss)
+
+    API->>BD: SELECT contacto por id
+    BD-->>API: Datos del contacto
+
+    API->>Redis: SET crm:contacto:{id}
+    Note right of Redis: TTL = 300 segundos
+
+    Redis-->>API: Dato almacenado
+    API-->>Cliente: 200 OK + datos del contacto
