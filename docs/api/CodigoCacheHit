@@ -1,0 +1,13 @@
+sequenceDiagram
+    actor Cliente
+    participant API as API Laravel
+    participant Redis
+    participant BD as Base de Datos MySQL
+
+    Cliente->>API: GET /contactos/{id}
+    API->>Redis: GET crm:contacto:{id}
+
+    Redis-->>API: Datos encontrados (Cache Hit)
+    API-->>Cliente: 200 OK + datos del contacto
+
+    Note over API,BD: No es necesario consultar la Base de Datos
