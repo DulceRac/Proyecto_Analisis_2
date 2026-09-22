@@ -1,11 +1,3 @@
--- Módulo CRM: estructura basada en las migraciones de modulocrm(1).rar.
--- Destino: una base nueva o vacía en MySQL.
--- Incluye las tablas del CRM, las auxiliares de Laravel y datos ficticios.
--- Si modulocrmLaravel ya contiene tablas, usar otra base para esta importación.
--- Los seeds de este archivo fueron preparados para el modelo actual.
--- Cuentas de prueba: admin.crm@example.com y usuario.crm@example.com.
--- Contraseña de ambas cuentas, solo para pruebas: CrmDemo2026!
-
 CREATE DATABASE IF NOT EXISTS `modulocrmLaravel`
     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
