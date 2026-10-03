@@ -1,1 +1,56 @@
+sequenceDiagram
+    actor Cliente as Postman / Cliente HTTP
+    participant JWT as Middleware JWT
+    participant Request as ContactoCreateRequest
+    participant Controller as ContactoController
+    participant DTO as ContactoCreateDTO
+    participant Service as ContactoService
+    participant Repository as ContactoRepository
+    participant Model as Eloquent Models
+    participant DB as MySQL
 
+    Cliente->>JWT: POST /api/v1/contactos + Bearer Token
+    JWT->>JWT: Validar token JWT
+
+    alt Token inválido o ausente
+        JWT-->>Cliente: 401 Unauthorized
+    else Token válido
+        JWT->>Request: Enviar solicitud autenticada
+        Request->>Request: Validar datos del contacto
+
+        alt Datos inválidos
+            Request-->>Cliente: 422 Unprocessable Entity
+        else Datos válidos
+            Request->>Controller: Datos validados
+            Controller->>DTO: Crear ContactoCreateDTO
+            DTO-->>Controller: DTO creado
+
+            Controller->>Service: crear(dto, idUsuario)
+            Service->>Repository: crear(dto, idUsuario)
+
+            Repository->>DB: BEGIN TRANSACTION
+
+            Repository->>Model: Contacto::create()
+            Model->>DB: INSERT contactos
+            DB-->>Model: Contacto creado
+            Model-->>Repository: Contacto
+
+            alt Tipo = cliente
+                Repository->>Model: Cliente::create()
+                Model->>DB: INSERT clientes
+            else Tipo = proveedor
+                Repository->>Model: Proveedor::create()
+                Model->>DB: INSERT proveedores
+            else Tipo = empleado
+                Repository->>Model: Empleado::create()
+                Model->>DB: INSERT empleados
+            else Tipo = general
+                Note over Repository,DB: No requiere tabla adicional
+            end
+
+            Repository->>DB: COMMIT
+            Repository-->>Service: Contacto creado
+            Service-->>Controller: Contacto creado
+            Controller-->>Cliente: 201 Created + JSON
+        end
+    end
