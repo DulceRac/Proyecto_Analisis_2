@@ -1,0 +1,35 @@
+@startuml
+
+class Usuario {
+  +id_usuario: int
+  +nombre: string
+  +email: string
+  +password_hash: string
+  +rol: string
+}
+
+class Contacto {
+  +id_contacto: int
+  +nombre: string
+  +telefono: string
+  +email: string
+  +direccion: string
+  +fecha_creacion: datetime
+  +fecha_actualizacion: datetime
+}
+
+class Cliente {
+  +id_contacto: int
+  +codigo_cliente: string
+}
+
+class Proveedor {
+  +id_contacto: int
+  +codigo_proveedor: string
+}
+
+Usuario "1" o-- "0..*" Contacto : gestiona
+Contacto "1" *-- "0..1" Cliente : contiene
+Contacto "1" *-- "0..1" Proveedor : contiene
+
+@enduml
