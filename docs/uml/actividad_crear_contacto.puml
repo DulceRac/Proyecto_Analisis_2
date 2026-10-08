@@ -1,0 +1,45 @@
+@startuml
+
+|Usuario|
+start
+:Ingresar datos del contacto;
+:Enviar formulario;
+
+|Aplicación Cliente|
+:Enviar POST /api/contactos;
+
+|API CRM|
+:Validar token JWT;
+
+if (¿Token válido?) then (Sí)
+    :Validar datos recibidos;
+
+    if (¿Datos válidos?) then (Sí)
+        |Base de Datos|
+        :Registrar contacto;
+
+        |API CRM|
+        :Generar respuesta 201 Created;
+
+        |Aplicación Cliente|
+        :Mostrar confirmación;
+
+        |Usuario|
+        :Visualizar contacto creado;
+    else (No)
+        :Generar respuesta 400 Bad Request;
+
+        |Aplicación Cliente|
+        :Mostrar errores de validación;
+    endif
+
+else (No)
+    :Generar respuesta 401 Unauthorized;
+
+    |Aplicación Cliente|
+    :Solicitar nueva autenticación;
+endif
+
+stop
+
+@enduml
