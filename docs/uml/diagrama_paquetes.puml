@@ -1,0 +1,53 @@
+@startuml
+
+package "Autenticación" {
+  class AuthController
+  class JwtService
+}
+
+package "Contactos" {
+  class ContactoController
+  class ContactoService
+  class Contacto
+}
+
+package "Clientes" {
+  class Cliente
+  class ClienteService
+}
+
+package "Proveedores" {
+  class Proveedor
+  class ProveedorService
+}
+
+package "Persistencia" {
+  class ContactoRepository
+  class ClienteRepository
+  class ProveedorRepository
+}
+
+package "Infraestructura" {
+  class Database
+  class Cache
+}
+
+AuthController --> JwtService
+
+ContactoController --> ContactoService
+ContactoService --> Contacto
+ContactoService --> ContactoRepository
+
+ClienteService --> Cliente
+ClienteService --> ClienteRepository
+
+ProveedorService --> Proveedor
+ProveedorService --> ProveedorRepository
+
+ContactoRepository --> Database
+ClienteRepository --> Database
+ProveedorRepository --> Database
+
+ContactoService --> Cache
+
+@enduml
