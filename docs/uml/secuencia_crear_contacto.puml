@@ -1,35 +1,45 @@
 @startuml
 
-actor Usuario
-participant "Cliente / Frontend" as Front
-participant "API CRM" as API
-participant "ContactoController" as Controller
-participant "Modelo Contacto" as Model
-database "Base de Datos" as DB
+|Usuario|
+start
+:Ingresar datos del contacto;
+:Enviar formulario;
 
-Usuario -> Front : Ingresa datos del contacto
-Front -> API : POST /api/contactos\nBearer Token + JSON
+|Aplicación Cliente|
+:Enviar POST /api/contactos;
 
-API -> API : Validar JWT
+|API CRM|
+:Validar token JWT;
 
-alt Token inválido
-    API --> Front : 401 Unauthorized
-else Token válido
-    API -> Controller : crearContacto(datos)
-    Controller -> Controller : Validar datos
+if (¿Token válido?) then (Sí)
+    :Validar datos recibidos;
 
-    alt Datos inválidos
-        Controller --> API : Error de validación
-        API --> Front : 400 Bad Request
-    else Datos válidos
-        Controller -> Model : create(datos)
-        Model -> DB : INSERT contacto
-        DB --> Model : Contacto registrado
-        Model --> Controller : Contacto creado
-        Controller --> API : Resultado
-        API --> Front : 201 Created
-        Front --> Usuario : Confirmación
-    end
-end
+    if (¿Datos válidos?) then (Sí)
+        |Base de Datos|
+        :Registrar contacto;
+
+        |API CRM|
+        :Generar respuesta 201 Created;
+
+        |Aplicación Cliente|
+        :Mostrar confirmación;
+
+        |Usuario|
+        :Visualizar contacto creado;
+    else (No)
+        :Generar respuesta 400 Bad Request;
+
+        |Aplicación Cliente|
+        :Mostrar errores de validación;
+    endif
+
+else (No)
+    :Generar respuesta 401 Unauthorized;
+
+    |Aplicación Cliente|
+    :Solicitar nueva autenticación;
+endif
+
+stop
 
 @enduml
