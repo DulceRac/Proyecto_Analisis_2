@@ -1,0 +1,62 @@
+@startuml
+
+title C4 Nivel 4 - Código del Componente Contactos
+
+class ContactoController {
+  +index()
+  +store()
+  +show(id)
+  +update(id)
+  +destroy(id)
+}
+
+class ContactoService {
+  +listarContactos()
+  +crearContacto(datos)
+  +obtenerContacto(id)
+  +actualizarContacto(id, datos)
+  +eliminarContacto(id)
+}
+
+interface ContactoRepositoryInterface {
+  +findAll()
+  +findById(id)
+  +create(datos)
+  +update(id, datos)
+  +delete(id)
+}
+
+class ContactoRepository {
+  +findAll()
+  +findById(id)
+  +create(datos)
+  +update(id, datos)
+  +delete(id)
+}
+
+class Contacto {
+  +id_contacto: int
+  +id_usuario: int
+  +tipo_contacto: string
+  +nombre: string
+  +apellido: string
+  +correo: string
+  +numero_telefonico: string
+  +direccion: string
+  +empresa: string
+  +estado_activo: boolean
+}
+
+class CacheService {
+  +get(clave)
+  +put(clave, valor, ttl)
+  +forget(clave)
+}
+
+ContactoController --> ContactoService
+ContactoService --> ContactoRepositoryInterface
+ContactoRepository ..|> ContactoRepositoryInterface
+ContactoRepository --> Contacto
+ContactoService --> CacheService
+
+@enduml
