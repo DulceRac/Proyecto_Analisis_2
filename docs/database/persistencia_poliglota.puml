@@ -1,1 +1,25 @@
 
+@startuml
+
+title Arquitectura de Persistencia Políglota
+
+rectangle "API CRM\nMonolito Modular" as API
+
+database "MySQL\nActual / Transición" as MySQL
+database "PostgreSQL\nRelacional propuesto" as PostgreSQL
+database "MongoDB\nDocumental" as MongoDB
+rectangle "Redis\nCache-Aside" as Redis
+database "Neo4j\nGrafos" as Neo4j
+
+API --> Redis : 1. Consultar caché
+Redis --> API : Cache Hit
+
+API --> MySQL : Persistencia actual
+
+API ..> PostgreSQL : Transacciones
+API ..> MongoDB : Documentos
+API ..> Neo4j : Relaciones
+
+API --> Redis : Guardar resultado\ncon TTL
+
+@enduml
