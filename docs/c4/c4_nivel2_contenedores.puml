@@ -1,0 +1,43 @@
+@startuml
+
+title C4 Nivel 2 - Contenedores del Módulo CRM
+
+left to right direction
+
+actor "Usuario" as Usuario
+actor "Administrador" as Admin
+
+rectangle "Aplicación Cliente\n[Web / Mobile]" as Cliente
+
+rectangle "Módulo CRM" {
+
+    rectangle "API CRM\n[Laravel / PHP]\nMonolito Modular" as API
+
+    database "MySQL\n[Persistencia actual]" as MySQL
+
+    rectangle "Redis\n[Caché]" as Redis
+
+    database "PostgreSQL\n[Persistencia relacional propuesta]" as PostgreSQL
+
+    database "MongoDB\n[Persistencia documental propuesta]" as MongoDB
+
+    database "Neo4j\n[Persistencia de grafos propuesta]" as Neo4j
+}
+
+rectangle "Servicio de Correo\n[Sistema Externo]" as Correo
+
+Usuario --> Cliente : Utiliza
+Admin --> Cliente : Administra
+
+Cliente --> API : Solicitudes REST / JSON\nHTTPS
+
+API --> MySQL : Lee y almacena datos
+API --> Redis : Cache-Aside
+
+API ..> PostgreSQL : Evolución propuesta
+API ..> MongoDB : Datos documentales
+API ..> Neo4j : Relaciones complejas
+
+API --> Correo : Notificaciones
+
+@enduml
