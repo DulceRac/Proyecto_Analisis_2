@@ -1,0 +1,19 @@
+@startuml
+
+title C4 Nivel 1 - Contexto del Sistema CRM
+
+left to right direction
+
+actor "Usuario" as Usuario
+actor "Administrador" as Admin
+
+rectangle "Módulo CRM" as CRM {
+}
+
+rectangle "Servicio de Correo\n[Sistema Externo]" as Correo
+
+Usuario --> CRM : Gestiona contactos,\nclientes y proveedores
+Admin --> CRM : Administra información\ny permisos
+CRM --> Correo : Envía notificaciones\nHTTPS / SMTP
+
+@enduml
