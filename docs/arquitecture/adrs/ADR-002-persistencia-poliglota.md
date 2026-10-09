@@ -1,47 +1,46 @@
-# ADR-002 – Adopción de Persistencia Políglota
+# ADR-002 – Evolución hacia Persistencia Políglota
 
 ## Estado
 
-Aceptado.
+Propuesto.
 
 ## Contexto
 
-El módulo CRM maneja diferentes tipos de información y necesidades de acceso. Algunas operaciones requieren integridad transaccional, otras flexibilidad documental, consultas rápidas en memoria y relaciones complejas entre entidades.
+La arquitectura previamente definida para el módulo CRM utiliza **MySQL como base de datos principal** y **Redis como almacenamiento temporal mediante el patrón Cache-Aside**. MySQL se mantiene actualmente como la fuente oficial de información del sistema. 
 
-Utilizar un único motor de base de datos para todos estos casos podría limitar el rendimiento y la flexibilidad del sistema.
+Para el presente diseño arquitectónico se requiere evaluar una evolución hacia una estrategia de **Persistencia Políglota**, incorporando tecnologías especializadas según el tipo de información procesada.
 
 ## Decisión
 
-Se adopta una estrategia de **Persistencia Políglota**, utilizando diferentes tecnologías según el tipo de información y operación:
+Se propone evolucionar progresivamente hacia la siguiente distribución:
 
-| Tecnología | Uso propuesto |
-|---|---|
-| **PostgreSQL** | Datos transaccionales principales: usuarios, contactos, clientes y proveedores. |
-| **MongoDB** | Información documental o flexible que pueda variar en estructura. |
-| **Redis** | Caché de consultas frecuentes, sesiones o información temporal. |
-| **Neo4j** | Relaciones complejas entre contactos, clientes, proveedores u otras entidades relacionadas. |
+- **PostgreSQL:** futura base de datos relacional principal para información transaccional.
+- **MongoDB:** almacenamiento de información documental y estructuras flexibles.
+- **Redis:** caché temporal mediante el patrón Cache-Aside.
+- **Neo4j:** almacenamiento de relaciones complejas entre entidades cuando las consultas basadas en grafos lo justifiquen.
+
+Durante la transición, MySQL podrá continuar funcionando como base de datos principal hasta que se realice una migración controlada hacia PostgreSQL.
 
 ## Consecuencias positivas
 
-- Cada tecnología se utiliza para el problema donde ofrece mejores capacidades.
-- Mejora el rendimiento de determinadas consultas.
-- Permite manejar distintos modelos de datos.
-- Reduce consultas repetitivas mediante caché.
-- Facilita análisis de relaciones complejas.
+- Uso de tecnologías especializadas según el tipo de información.
+- Mejor capacidad para manejar distintos modelos de datos.
+- Redis reduce consultas repetitivas.
+- MongoDB permite manejar documentos con estructuras variables.
+- Neo4j facilita análisis de relaciones complejas.
+- PostgreSQL proporciona integridad para datos transaccionales.
 
 ## Consecuencias negativas
 
-- Incrementa la complejidad de infraestructura.
-- Requiere administrar diferentes motores de datos.
-- Puede existir duplicación de información.
-- Se deben controlar problemas de sincronización y consistencia.
+- Mayor complejidad de infraestructura.
+- Necesidad de administrar múltiples motores.
+- Posibles problemas de sincronización.
+- Aumento de esfuerzo en pruebas y mantenimiento.
 
-## Manejo de consistencia
+## Riesgos
 
-PostgreSQL se utilizará como fuente principal para la información transaccional crítica.
-
-Los datos almacenados en MongoDB, Redis o Neo4j podrán actualizarse de forma complementaria mediante mecanismos de sincronización y consistencia eventual cuando corresponda.
+El principal riesgo es generar inconsistencias entre las distintas fuentes de datos. Para reducirlo, deberá definirse una fuente autoritativa para cada tipo de información y evitar duplicaciones innecesarias.
 
 ## Justificación
 
-La persistencia políglota permite seleccionar la tecnología más adecuada para cada necesidad del CRM, manteniendo PostgreSQL como base principal y utilizando MongoDB, Redis y Neo4j como tecnologías especializadas.
+La Persistencia Políglota no sustituye inmediatamente la arquitectura actual, sino que representa una evolución planificada para cumplir nuevas necesidades de escalabilidad, flexibilidad y procesamiento especializado.
