@@ -1,0 +1,56 @@
+@startuml
+
+title C4 Nivel 3 - Componentes Internos del CRM
+
+left to right direction
+
+rectangle "API CRM - Laravel / Monolito Modular" {
+
+    rectangle "Módulo de Autenticación" as Auth {
+        component "AuthController" as AuthController
+        component "JWT Service" as JWT
+    }
+
+    rectangle "Módulo de Contactos" as Contactos {
+        component "ContactoController" as ContactoController
+        component "ContactoService" as ContactoService
+    }
+
+    rectangle "Módulo de Clientes" as Clientes {
+        component "ClienteService" as ClienteService
+    }
+
+    rectangle "Módulo de Proveedores" as Proveedores {
+        component "ProveedorService" as ProveedorService
+    }
+
+    rectangle "Persistencia" as Persistencia {
+        component "ContactoRepository" as ContactoRepository
+        component "ClienteRepository" as ClienteRepository
+        component "ProveedorRepository" as ProveedorRepository
+    }
+
+    rectangle "Infraestructura" as Infraestructura {
+        component "Cache Service" as CacheService
+    }
+}
+
+database "MySQL" as MySQL
+rectangle "Redis" as Redis
+
+AuthController --> JWT : Genera / valida token
+
+ContactoController --> ContactoService
+ContactoService --> ContactoRepository
+ContactoService --> CacheService
+
+ClienteService --> ClienteRepository
+ProveedorService --> ProveedorRepository
+
+ContactoRepository --> MySQL
+ClienteRepository --> MySQL
+ProveedorRepository --> MySQL
+
+CacheService --> Redis
+
+@enduml
