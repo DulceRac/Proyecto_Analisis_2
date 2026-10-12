@@ -5,8 +5,13 @@ info:
   version: 1.0.0
   description: >
     API REST para autenticación, gestión de contactos, historial de cambios
-    y consulta de relaciones del Módulo CRM. Utiliza persistencia políglota
-    mediante PostgreSQL, MongoDB, Redis y Neo4j.
+    y consulta de relaciones del Módulo CRM.
+
+    La solución utiliza una arquitectura Monolítica Modular y una estrategia
+    de persistencia políglota basada en PostgreSQL, MongoDB, Redis y Neo4j.
+
+    Las respuestas de error utilizan Problem Details conforme a RFC 9457
+    y códigos de estado HTTP conforme a RFC 9110.
 
 servers:
   - url: http://127.0.0.1:8000/api/v1
@@ -14,9 +19,17 @@ servers:
 
 tags:
   - name: Autenticación
+    description: Operaciones de autenticación y generación de JWT.
+
   - name: Contactos
+    description: Operaciones principales para gestionar contactos.
+
   - name: Historial
+    description: Consulta del historial documental de contactos.
+
   - name: Relaciones
+    description: Consulta de relaciones entre entidades mediante grafos.
+
 
 paths:
 
@@ -24,26 +37,54 @@ paths:
     post:
       tags:
         - Autenticación
+
       summary: Iniciar sesión
-      operationId: login
+
+      description: >
+        Valida las credenciales de un usuario activo y genera
+        un token Bearer JWT.
+
+      operationId: iniciarSesion
+
       x-persistence:
         - PostgreSQL
+
       requestBody:
         required: true
+
         content:
           application/json:
+
             schema:
               $ref: '#/components/schemas/LoginRequest'
+
             example:
               correo: admin@crm.com
               password: Clave1234
+
       responses:
+
         '200':
-          description: Autenticación correcta
+          description: Inicio de sesión correcto.
+
           content:
             application/json:
+
               schema:
                 $ref: '#/components/schemas/LoginResponse'
+
+              example:
+                success: true
+                message: Inicio de sesión correcto.
+                data:
+                  token: eyJhbGciOiJIUzI1NiJ9.ejemplo.firma
+                  token_type: Bearer
+                  usuario:
+                    id_usuario: 1
+                    nombre: Administrador CRM
+                    correo: admin@crm.com
+                    rol: administrador
+                    estado_activo: true
 
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -54,39 +95,77 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+
   /contactos:
+
     get:
       tags:
         - Contactos
+
       summary: Listar y filtrar contactos
+
+      description: >
+        Retorna una lista paginada de contactos autorizados.
+        La operación utiliza Redis mediante Cache-Aside.
+        Ante un Cache Miss se consulta PostgreSQL y el resultado
+        puede almacenarse temporalmente en Redis.
+
       operationId: listarContactos
+
       security:
         - bearerAuth: []
+
       x-persistence:
         - Redis
         - PostgreSQL
+
       parameters:
 
         - name: buscar
           in: query
-          description: Búsqueda por nombre, apellido, correo o empresa
           required: false
+
+          description: >
+            Texto utilizado para buscar por nombre, apellido,
+            correo, teléfono o empresa.
+
           schema:
             type: string
+            maxLength: 160
 
         - name: tipo
           in: query
           required: false
+
+          description: Clasificación del contacto.
+
           schema:
             type: string
+
             enum:
               - general
               - cliente
               - proveedor
 
+        - name: estado
+          in: query
+          required: false
+
+          description: Estado lógico del contacto.
+
+          schema:
+            type: string
+
+            enum:
+              - activo
+              - inactivo
+
         - name: page
           in: query
           required: false
+
+          description: Número de página solicitada.
+
           schema:
             type: integer
             minimum: 1
@@ -95,6 +174,9 @@ paths:
         - name: per_page
           in: query
           required: false
+
+          description: Número de registros por página.
+
           schema:
             type: integer
             minimum: 1
@@ -102,56 +184,108 @@ paths:
             default: 10
 
       responses:
+
         '200':
-          description: Contactos consultados correctamente
+          description: Contactos consultados correctamente.
+
           content:
             application/json:
+
               schema:
                 $ref: '#/components/schemas/ContactoListResponse'
 
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
         '500':
           $ref: '#/components/responses/InternalError'
+
 
     post:
       tags:
         - Contactos
+
       summary: Registrar un contacto
+
+      description: >
+        Registra un nuevo contacto en PostgreSQL.
+        La operación puede generar un registro histórico en MongoDB
+        e invalida las claves relacionadas almacenadas en Redis.
+
       operationId: crearContacto
+
       security:
         - bearerAuth: []
+
       x-persistence:
         - PostgreSQL
         - MongoDB
         - Redis
+
       requestBody:
         required: true
+
         content:
           application/json:
+
             schema:
               $ref: '#/components/schemas/ContactoRequest'
-            example:
-              tipo_contacto: cliente
-              nombre: Carlos
-              apellido: Lopez
-              correo: carlos@example.com
-              numero_telefonico: "+50255555555"
-              direccion: Ciudad de Guatemala
-              empresa: Comercial Lopez
-              codigo_cliente: CLI-001
+
+            examples:
+
+              contactoGeneral:
+                summary: Contacto general
+                value:
+                  tipo_contacto: general
+                  nombre: Andrea
+                  apellido: Morales
+                  correo: andrea@example.com
+                  numero_telefonico: "+50255550001"
+                  direccion: Ciudad de Guatemala
+                  empresa: Empresa Demo
+
+              cliente:
+                summary: Contacto clasificado como cliente
+                value:
+                  tipo_contacto: cliente
+                  nombre: Carlos
+                  apellido: Lopez
+                  correo: carlos@example.com
+                  numero_telefonico: "+50255550002"
+                  direccion: Ciudad de Guatemala
+                  empresa: Comercial Lopez
+                  codigo_cliente: CLI-001
+
+              proveedor:
+                summary: Contacto clasificado como proveedor
+                value:
+                  tipo_contacto: proveedor
+                  nombre: Pedro
+                  apellido: Morales
+                  correo: proveedor@example.com
+                  numero_telefonico: "+50255550003"
+                  empresa: Suministros GT
+                  codigo_proveedor: PROV-001
 
       responses:
+
         '201':
-          description: Contacto creado correctamente
+          description: Contacto creado correctamente.
+
           content:
             application/json:
+
               schema:
                 $ref: '#/components/schemas/ContactoResponse'
 
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
         '422':
           $ref: '#/components/responses/ValidationError'
@@ -159,45 +293,74 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+
   /contactos/{id}:
+
     parameters:
+
       - $ref: '#/components/parameters/ContactoId'
+
 
     get:
       tags:
         - Contactos
+
       summary: Consultar un contacto
+
+      description: >
+        Obtiene la información de un contacto específico.
+        La operación puede recuperar la información desde Redis
+        o PostgreSQL utilizando Cache-Aside.
+
       operationId: obtenerContacto
+
       security:
         - bearerAuth: []
+
       x-persistence:
         - Redis
         - PostgreSQL
 
       responses:
+
         '200':
-          description: Contacto encontrado
+          description: Contacto encontrado correctamente.
+
           content:
             application/json:
+
               schema:
                 $ref: '#/components/schemas/ContactoResponse'
 
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
         '404':
           $ref: '#/components/responses/NotFound'
 
         '500':
           $ref: '#/components/responses/InternalError'
+
 
     put:
       tags:
         - Contactos
+
       summary: Actualizar un contacto
+
+      description: >
+        Actualiza un contacto almacenado en PostgreSQL,
+        registra el cambio en MongoDB e invalida la información
+        relacionada almacenada en Redis.
+
       operationId: actualizarContacto
+
       security:
         - bearerAuth: []
+
       x-persistence:
         - PostgreSQL
         - MongoDB
@@ -205,21 +368,39 @@ paths:
 
       requestBody:
         required: true
+
         content:
           application/json:
+
             schema:
               $ref: '#/components/schemas/ContactoRequest'
 
+            example:
+              tipo_contacto: cliente
+              nombre: Carlos
+              apellido: Lopez
+              correo: carlos.actualizado@example.com
+              numero_telefonico: "+50255550002"
+              direccion: Guatemala
+              empresa: Comercial Lopez
+              codigo_cliente: CLI-001
+
       responses:
+
         '200':
-          description: Contacto actualizado correctamente
+          description: Contacto actualizado correctamente.
+
           content:
             application/json:
+
               schema:
                 $ref: '#/components/schemas/ContactoResponse'
 
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
         '404':
           $ref: '#/components/responses/NotFound'
@@ -230,30 +411,48 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+
     delete:
       tags:
         - Contactos
+
       summary: Desactivar un contacto
-      operationId: eliminarContacto
+
       description: >
-        Realiza eliminación lógica mediante el cambio del estado del contacto.
+        Realiza una eliminación lógica del contacto.
+        El registro permanece almacenado, pero su estado cambia
+        a inactivo. La operación genera historial e invalida caché.
+
+      operationId: desactivarContacto
+
       security:
         - bearerAuth: []
+
       x-persistence:
         - PostgreSQL
         - MongoDB
         - Redis
 
       responses:
+
         '200':
-          description: Contacto desactivado correctamente
+          description: Contacto desactivado correctamente.
+
           content:
             application/json:
+
               schema:
                 $ref: '#/components/schemas/OperacionResponse'
 
+              example:
+                success: true
+                message: Contacto desactivado correctamente.
+
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
         '404':
           $ref: '#/components/responses/NotFound'
@@ -261,38 +460,48 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+
   /contactos/{id}/historial:
+
     parameters:
+
       - $ref: '#/components/parameters/ContactoId'
+
 
     get:
       tags:
         - Historial
+
       summary: Consultar historial de un contacto
+
+      description: >
+        Obtiene los registros históricos relacionados con
+        las operaciones realizadas sobre un contacto.
+
       operationId: obtenerHistorialContacto
+
       security:
         - bearerAuth: []
+
       x-persistence:
         - MongoDB
 
       responses:
+
         '200':
-          description: Historial obtenido correctamente
+          description: Historial obtenido correctamente.
+
           content:
             application/json:
+
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Historial'
+                $ref: '#/components/schemas/HistorialResponse'
 
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
         '404':
           $ref: '#/components/responses/NotFound'
@@ -300,38 +509,48 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+
   /contactos/{id}/relaciones:
+
     parameters:
+
       - $ref: '#/components/parameters/ContactoId'
+
 
     get:
       tags:
         - Relaciones
+
       summary: Consultar relaciones de un contacto
+
+      description: >
+        Obtiene las relaciones existentes entre el contacto
+        solicitado y otras entidades registradas como grafos.
+
       operationId: obtenerRelacionesContacto
+
       security:
         - bearerAuth: []
+
       x-persistence:
         - Neo4j
 
       responses:
+
         '200':
-          description: Relaciones obtenidas correctamente
+          description: Relaciones obtenidas correctamente.
+
           content:
             application/json:
+
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Relacion'
+                $ref: '#/components/schemas/RelacionResponse'
 
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
         '404':
           $ref: '#/components/responses/NotFound'
@@ -343,10 +562,12 @@ paths:
 components:
 
   securitySchemes:
+
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
 
   parameters:
 
@@ -354,78 +575,125 @@ components:
       name: id
       in: path
       required: true
-      description: Identificador único del contacto
+
+      description: Identificador único del contacto.
+
       schema:
         type: integer
         format: int64
         minimum: 1
 
+      example: 1
+
+
   schemas:
 
     LoginRequest:
       type: object
+
       required:
         - correo
         - password
+
       properties:
+
         correo:
           type: string
           format: email
           maxLength: 160
+          example: admin@crm.com
+
         password:
           type: string
           format: password
           minLength: 8
+          example: Clave1234
+
 
     LoginResponse:
       type: object
+
       required:
         - success
+        - message
         - data
+
       properties:
+
         success:
           type: boolean
           example: true
+
         message:
           type: string
           example: Inicio de sesión correcto.
+
         data:
           type: object
+
+          required:
+            - token
+            - token_type
+            - usuario
+
           properties:
+
             token:
               type: string
               example: eyJhbGciOiJIUzI1NiJ9.ejemplo.firma
+
             token_type:
               type: string
               example: Bearer
+
             usuario:
               $ref: '#/components/schemas/Usuario'
 
+
     Usuario:
       type: object
+
+      required:
+        - id_usuario
+        - nombre
+        - correo
+        - rol
+        - estado_activo
+
       properties:
+
         id_usuario:
           type: integer
           format: int64
           example: 1
+
         nombre:
           type: string
+          maxLength: 120
           example: Administrador CRM
+
         correo:
           type: string
           format: email
           example: admin@crm.com
+
         rol:
           type: string
+
           enum:
             - estandar
             - administrador
+
+          example: administrador
+
         estado_activo:
           type: boolean
           example: true
 
+
     ContactoRequest:
       type: object
+
       required:
         - tipo_contacto
         - nombre
@@ -436,55 +704,81 @@ components:
 
         tipo_contacto:
           type: string
+
           enum:
             - general
             - cliente
             - proveedor
 
+          example: cliente
+
         nombre:
           type: string
           minLength: 2
           maxLength: 100
+          example: Carlos
 
         apellido:
           type: string
           minLength: 2
           maxLength: 100
+          example: Lopez
 
         correo:
           type: string
           format: email
-          nullable: true
           maxLength: 160
+          nullable: true
+          example: carlos@example.com
 
         numero_telefonico:
           type: string
+          minLength: 8
           maxLength: 30
+          example: "+50255555555"
 
         direccion:
           type: string
-          nullable: true
           maxLength: 255
+          nullable: true
+          example: Ciudad de Guatemala
 
         empresa:
           type: string
-          nullable: true
           maxLength: 120
+          nullable: true
+          example: Comercial Lopez
 
         codigo_cliente:
           type: string
+          maxLength: 50
           nullable: true
-          description: Obligatorio cuando tipo_contacto es cliente.
+
+          description: >
+            Código requerido cuando tipo_contacto
+            corresponde a cliente.
+
+          example: CLI-001
 
         codigo_proveedor:
           type: string
+          maxLength: 50
           nullable: true
-          description: Obligatorio cuando tipo_contacto es proveedor.
+
+          description: >
+            Código requerido cuando tipo_contacto
+            corresponde a proveedor.
+
+          example: PROV-001
+
 
     Contacto:
       allOf:
+
         - $ref: '#/components/schemas/ContactoRequest'
+
         - type: object
+
           required:
             - id_contacto
             - id_usuario
@@ -510,15 +804,25 @@ components:
             fecha_creacion:
               type: string
               format: date-time
+              example: "2026-10-12T10:30:00Z"
 
             fecha_actualizacion:
               type: string
               format: date-time
               nullable: true
+              example: "2026-10-12T12:00:00Z"
+
 
     ContactoResponse:
       type: object
+
+      required:
+        - success
+        - message
+        - data
+
       properties:
+
         success:
           type: boolean
           example: true
@@ -530,8 +834,16 @@ components:
         data:
           $ref: '#/components/schemas/Contacto'
 
+
     ContactoListResponse:
       type: object
+
+      required:
+        - success
+        - message
+        - data
+        - meta
+
       properties:
 
         success:
@@ -544,14 +856,23 @@ components:
 
         data:
           type: array
+
           items:
             $ref: '#/components/schemas/Contacto'
 
         meta:
           $ref: '#/components/schemas/PaginationMeta'
 
+
     PaginationMeta:
       type: object
+
+      required:
+        - pagina_actual
+        - ultima_pagina
+        - por_pagina
+        - total
+
       properties:
 
         pagina_actual:
@@ -570,8 +891,14 @@ components:
           type: integer
           example: 37
 
+
     OperacionResponse:
       type: object
+
+      required:
+        - success
+        - message
+
       properties:
 
         success:
@@ -582,45 +909,101 @@ components:
           type: string
           example: Operación realizada correctamente.
 
+
     Historial:
       type: object
-      description: Documento almacenado en MongoDB.
+
+      description: >
+        Documento histórico almacenado en MongoDB.
+
+      required:
+        - id_contacto
+        - accion
+        - usuario
+        - fecha
+
       properties:
 
         id_contacto:
           type: integer
+          format: int64
           example: 25
 
         accion:
           type: string
+
           enum:
             - creacion
             - actualizacion
             - desactivacion
 
+          example: actualizacion
+
         usuario:
           type: integer
+          format: int64
           example: 1
 
         cambios:
           type: object
           additionalProperties: true
 
+          example:
+            correo_anterior: carlos@example.com
+            correo_nuevo: carlos.actualizado@example.com
+
         fecha:
           type: string
           format: date-time
+          example: "2026-10-12T12:00:00Z"
+
+
+    HistorialResponse:
+      type: object
+
+      required:
+        - success
+        - message
+        - data
+
+      properties:
+
+        success:
+          type: boolean
+          example: true
+
+        message:
+          type: string
+          example: Historial consultado correctamente.
+
+        data:
+          type: array
+
+          items:
+            $ref: '#/components/schemas/Historial'
+
 
     Relacion:
       type: object
-      description: Relación almacenada como grafo en Neo4j.
+
+      description: >
+        Relación almacenada como grafo en Neo4j.
+
+      required:
+        - id_contacto_origen
+        - id_contacto_destino
+        - tipo_relacion
+
       properties:
 
         id_contacto_origen:
           type: integer
+          format: int64
           example: 25
 
         id_contacto_destino:
           type: integer
+          format: int64
           example: 40
 
         tipo_relacion:
@@ -629,12 +1012,42 @@ components:
 
         descripcion:
           type: string
+          nullable: true
           example: Ambos contactos pertenecen a la misma organización.
+
+
+    RelacionResponse:
+      type: object
+
+      required:
+        - success
+        - message
+        - data
+
+      properties:
+
+        success:
+          type: boolean
+          example: true
+
+        message:
+          type: string
+          example: Relaciones consultadas correctamente.
+
+        data:
+          type: array
+
+          items:
+            $ref: '#/components/schemas/Relacion'
+
 
     ProblemDetails:
       type: object
+
       description: >
-        Respuesta de error basada en RFC 9457 Problem Details for HTTP APIs.
+        Respuesta de error basada en RFC 9457
+        Problem Details for HTTP APIs.
+
       required:
         - type
         - title
@@ -645,46 +1058,82 @@ components:
         type:
           type: string
           format: uri
+
+          description: >
+            URI que identifica el tipo de problema.
+
           example: https://api.crm.local/problems/recurso-no-encontrado
 
         title:
           type: string
+
+          description: >
+            Resumen breve y legible del problema.
+
           example: Recurso no encontrado
 
         status:
           type: integer
+
+          description: >
+            Código de estado HTTP asociado al problema.
+
           example: 404
 
         detail:
           type: string
+
+          description: >
+            Explicación específica del problema ocurrido.
+
           example: El contacto solicitado no existe.
 
         instance:
           type: string
+
+          description: >
+            URI que identifica la solicitud concreta
+            donde ocurrió el problema.
+
           example: /api/v1/contactos/999
 
         errors:
           type: object
           nullable: true
+
+          description: >
+            Errores específicos de validación asociados
+            a campos de la solicitud.
+
           additionalProperties:
             type: array
+
             items:
               type: string
 
         traceId:
           type: string
           nullable: true
+
+          description: >
+            Identificador opcional para seguimiento
+            del error en registros internos.
+
           example: 73c0ca12-7436-4df0-a026-31a63914511c
 
 
   responses:
 
     Unauthorized:
-      description: Autenticación requerida o token inválido.
+      description: Autenticación requerida, inválida o expirada.
+
       content:
+
         application/problem+json:
+
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+
           example:
             type: https://api.crm.local/problems/no-autorizado
             title: No autorizado
@@ -692,12 +1141,37 @@ components:
             detail: El token es inexistente, inválido o ha expirado.
             instance: /api/v1/contactos
 
-    NotFound:
-      description: Recurso no encontrado.
+
+    Forbidden:
+      description: Usuario autenticado sin permisos suficientes.
+
       content:
+
         application/problem+json:
+
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+
+          example:
+            type: https://api.crm.local/problems/acceso-prohibido
+            title: Acceso prohibido
+            status: 403
+            detail: >
+              El usuario autenticado no posee permisos
+              para realizar esta operación.
+            instance: /api/v1/contactos/25
+
+
+    NotFound:
+      description: Recurso solicitado no encontrado.
+
+      content:
+
+        application/problem+json:
+
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
           example:
             type: https://api.crm.local/problems/recurso-no-encontrado
             title: Recurso no encontrado
@@ -705,31 +1179,44 @@ components:
             detail: El contacto solicitado no existe.
             instance: /api/v1/contactos/999
 
+
     ValidationError:
       description: Los datos proporcionados no superaron la validación.
+
       content:
+
         application/problem+json:
+
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+
           example:
             type: https://api.crm.local/problems/error-validacion
             title: Error de validación
             status: 422
             detail: Uno o más campos contienen valores inválidos.
             instance: /api/v1/contactos
+
             errors:
               nombre:
                 - El nombre es obligatorio.
 
+
     InternalError:
-      description: Error interno del servidor.
+      description: Error interno inesperado del servidor.
+
       content:
+
         application/problem+json:
+
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+
           example:
             type: https://api.crm.local/problems/error-interno
             title: Error interno del servidor
             status: 500
-            detail: Ocurrió un error inesperado al procesar la solicitud.
+            detail: >
+              Ocurrió un error inesperado al procesar
+              la solicitud.
             instance: /api/v1/contactos
